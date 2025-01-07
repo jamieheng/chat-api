@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Group Chat</title>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #chat-box {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+        background-color: #f9f9f9;
+      }
+      #message-input {
+        width: calc(100% - 60px);
+        padding: 10px;
+        margin-right: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      #send-btn {
+        padding: 10px 15px;
+        border: none;
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #send-btn:hover {
+        background-color: #0056b3;
+      }
+      .message {
+        margin-bottom: 10px;
+      }
+      .sent {
+        text-align: right;
+        color: #007bff;
+      }
+      .received {
+        text-align: left;
+        color: #333;
+      }
+      .typing {
+        font-style: italic;
+        color: #888;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Real-Time Group Chat 1</h1>
+    <div id="chat-box"></div>
+    <div id="typing-indicator" class="typing" style="display: none">
+      Someone is typing...
+    </div>
+    <input type="text" id="message-input" placeholder="Type a message..." />
+    <button id="send-btn">Send</button>
+
+    <script>
+      const socket = io("http://localhost:3000");
+
+      // Replace with dynamic user IDs and group room ID in real-world apps
+      const userId = "677b5fb4fd3a0bf29ea0e925"; // Example sender ID
+      const groupRoomId = "group-1736190113166"; // Example group room ID
+
+      // Join the group chat room
+      socket.emit("joinRoom", groupRoomId); // Join the group chat using the room ID
+
+      // Typing indicator visibility toggle
+      const toggleTypingIndicator = (isVisible) => {
+        const typingIndicator = document.getElementById("typing-indicator");
+        typingIndicator.style.display = isVisible ? "block" : "none";
+      };
+
+      // Listen for typing events in the group chat
+      socket.on("typing", () => toggleTypingIndicator(true));
+      socket.on("stopTyping", () => toggleTypingIndicator(false));
+
+      // Listen for incoming messages in the group chat
+      socket.on("receiveMessage", (message) => {
+        const chatBox = document.getElementById("chat-box");
+        const newMessage = document.createElement("div");
+        newMessage.classList.add(
+          "message",
+          message.sender_id === userId ? "sent" : "received"
+        );
+        newMessage.textContent = `${
+          message.sender_id === userId ? "You" : `From ${message.sender_id}`
+        }: ${message.content}`;
+        chatBox.appendChild(newMessage);
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the latest message
+      });
+
+      // Send a message to the group
+      document.getElementById("send-btn").addEventListener("click", () => {
+        const messageInput = document.getElementById("message-input");
+        const message = messageInput.value.trim(); // Trim whitespace
+
+        if (!message) {
+          alert("Message cannot be empty!");
+          return;
+        }
+
+        // Emit "sendMessage" event to the group chat room
+        socket.emit("sendMessage", {
+          room_id: groupRoomId,
+          sender_id: userId,
+          content: message,
+        });
+
+        // Clear input
+        messageInput.value = "";
+      });
+
+      // Handle typing events in the input field
+      const messageInput = document.getElementById("message-input");
+      messageInput.addEventListener("input", () => {
+        socket.emit("typing", groupRoomId);
+
+        // Stop typing after 2 seconds of inactivity
+        clearTimeout(window.typingTimeout);
+        window.typingTimeout = setTimeout(() => {
+          socket.emit("stopTyping", groupRoomId);
+        }, 2000);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Chat 1-2</title>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #chat-box {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+        background-color: #f9f9f9;
+      }
+      #message-input {
+        width: calc(100% - 60px);
+        padding: 10px;
+        margin-right: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      #send-btn {
+        padding: 10px 15px;
+        border: none;
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #send-btn:hover {
+        background-color: #0056b3;
+      }
+      .message {
+        margin-bottom: 10px;
+      }
+      .sent {
+        text-align: right;
+        color: #007bff;
+      }
+      .received {
+        text-align: left;
+        color: #333;
+      }
+      .typing {
+        font-style: italic;
+        color: #888;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Real-Time Chat 2-1</h1>
+    <div id="chat-box"></div>
+    <div id="typing-indicator" class="typing" style="display: none">
+      Typing...
+    </div>
+    <input type="text" id="message-input" placeholder="Type a message..." />
+    <button id="send-btn">Send</button>
+
+    <script>
+      const socket = io("http://localhost:3000");
+
+      // Replace with dynamic user IDs in real-world apps
+      const userId = "677b5fb4fd3a0bf29ea0e925"; // Example sender ID
+      const receiverId = "677a9c35ac8ff6c62113e2f0"; // Example receiver ID
+
+      // Function to generate a private room ID based on user IDs
+      const generateRoomId = (userId1, userId2) => {
+        return [userId1, userId2].sort().join("-");
+      };
+
+      // Join the private room
+      const roomId = generateRoomId(userId, receiverId);
+      socket.emit("joinRoom", roomId); // Join the room with roomId
+
+      // Typing indicator visibility toggle
+      const toggleTypingIndicator = (isVisible) => {
+        const typingIndicator = document.getElementById("typing-indicator");
+        typingIndicator.style.display = isVisible ? "block" : "none";
+      };
+
+      // Listen for typing events
+      socket.on("typing", () => toggleTypingIndicator(true));
+      socket.on("stopTyping", () => toggleTypingIndicator(false));
+
+      // Listen for incoming messages
+      socket.on("receiveMessage", (message) => {
+        const chatBox = document.getElementById("chat-box");
+        const newMessage = document.createElement("div");
+        newMessage.classList.add(
+          "message",
+          message.sender_id === userId ? "sent" : "received"
+        );
+        newMessage.textContent = `${
+          message.sender_id === userId ? "You" : `From ${message.sender_id}`
+        }: ${message.content}`;
+        chatBox.appendChild(newMessage);
+        chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the latest message
+      });
+
+      // Send a message
+      // Send a message
+      document.getElementById("send-btn").addEventListener("click", () => {
+        const messageInput = document.getElementById("message-input");
+        const message = messageInput.value.trim(); // Trim whitespace
+
+        if (!message) {
+          alert("Message cannot be empty!");
+          return;
+        }
+
+        // Emit "sendMessage" event to the private room (no need to display it immediately)
+        socket.emit("sendMessage", {
+          room_id: roomId,
+          sender_id: userId,
+          receiver_id: receiverId,
+          content: message,
+        });
+
+        // Clear input
+        messageInput.value = "";
+      });
+
+      // Handle typing events
+      const messageInput = document.getElementById("message-input");
+      messageInput.addEventListener("input", () => {
+        socket.emit("typing", roomId);
+
+        // Stop typing after 2 seconds of inactivity
+        clearTimeout(window.typingTimeout);
+        window.typingTimeout = setTimeout(() => {
+          socket.emit("stopTyping", roomId);
+        }, 2000);
+      });
+    </script>
+  </body>
+</html>
