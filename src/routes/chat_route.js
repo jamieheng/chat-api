@@ -4,9 +4,9 @@ const router = express.Router();
 
 // Send a message with optional media
 router.post(
-  "/send",
-  messageController.upload.single("media"),
-  messageController.sendMessage
+	"/send",
+	messageController.upload.single("media"),
+	messageController.sendMessage
 );
 
 // Get chat messages between two users

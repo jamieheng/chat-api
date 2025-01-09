@@ -11,4 +11,10 @@ router.post("/login", userController.login);
 // Logout a user
 router.post("/logout", userController.logout);
 
+// verify otp
+router.post("/verifyOtp", userController.verifyOtp);
+
+// get user
+router.get("/getUser/:userId", userController.getUser);
+
 module.exports = router;
