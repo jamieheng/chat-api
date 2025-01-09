@@ -7,6 +7,7 @@ const createContact = async (req, res) => {
 		req.body;
 
 	try {
+		///
 		// Check if the phone number belongs to an existing user
 		const user = await User.findOne({ phoneNumber });
 
