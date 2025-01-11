@@ -8,7 +8,11 @@ const chatListSchema = new mongoose.Schema({
 	last_message: { type: String, required: true }, // The last message sent in the chat
 	last_message_timestamp: { type: Date, default: Date.now }, // Timestamp of the last message
 	receiver_id: { type: String, required: true }, // ID of the other user in the chat
-	room_id: { type: mongoose.Schema.Types.ObjectId, ref: "Room" },
+	room_id: {
+		type: String,
+		required: true,
+	},
+	isGroup: { type: Boolean, default: false },
 });
 
 const ChatList = mongoose.model("ChatList", chatListSchema);
