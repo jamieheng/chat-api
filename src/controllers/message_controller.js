@@ -55,6 +55,7 @@ const sendMessage = async (req, res) => {
 		}
 
 		const room = await findOrCreatePrivateRoom(sender_id, receiver_id);
+		console.log(`Room found or created with ID: ${room._id}`);
 
 		const message = new Message({
 			roomId: room._id,
@@ -65,12 +66,56 @@ const sendMessage = async (req, res) => {
 		});
 
 		await message.save();
+		console.log(`Message saved: ${message._id}`);
 
-		// Emit the message to the clients in the room
 		io.to(room._id).emit("receiveMessage", message);
 
+		let chatListEntry1 = await ChatList.findOne({
+			user_id: sender_id,
+			room_id: room._id,
+		});
+		console.log(
+			`Sender's chat list entry: ${chatListEntry1 ? "Found" : "Not found"}`
+		);
+
+		let chatListEntry2 = await ChatList.findOne({
+			user_id: receiver_id,
+			room_id: room._id,
+		});
+		console.log(
+			`Receiver's chat list entry: ${chatListEntry2 ? "Found" : "Not found"}`
+		);
+
+		if (!chatListEntry1) {
+			const newChatListEntry1 = new ChatList({
+				user_id: sender_id,
+				profile_picture: "",
+				name: "",
+				last_message: content,
+				last_message_timestamp: new Date(),
+				receiver_id: receiver_id,
+				room_id: room._id,
+			});
+			await newChatListEntry1.save();
+			console.log(`New sender's chat list created: ${newChatListEntry1._id}`);
+		}
+
+		if (!chatListEntry2) {
+			const newChatListEntry2 = new ChatList({
+				user_id: receiver_id,
+				profile_picture: "",
+				name: "",
+				last_message: content,
+				last_message_timestamp: new Date(),
+				receiver_id: sender_id,
+				room_id: room._id,
+			});
+			await newChatListEntry2.save();
+			console.log(`New receiver's chat list created: ${newChatListEntry2._id}`);
+		}
+
 		res.status(201).json({
-			message: "Message sent successfully!",
+			message: "Message sent and chat list updated successfully!",
 			status: "success",
 			data: message,
 		});

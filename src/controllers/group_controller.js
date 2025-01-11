@@ -13,7 +13,7 @@ const createRoom = async (req, res) => {
 			});
 		}
 
-		// Find the creator in the database
+		// Find the creator
 		const creator = await User.findById(creator_id);
 		if (!creator) {
 			return res.status(404).json({
@@ -22,32 +22,51 @@ const createRoom = async (req, res) => {
 			});
 		}
 
-		// Ensure participants is an array (if only one participant is provided, make it an array)
-		const allParticipants = Array.isArray(participants)
+		// Prepare participants array
+		let allParticipants = Array.isArray(participants)
 			? participants
 			: [participants];
-		allParticipants.unshift(creator_id); // Include the creator in participants
+		allParticipants.unshift(creator_id);
 
-		// Generate a unique room ID (for group rooms)
+		// Ensure uniqueness
+		allParticipants = [...new Set(allParticipants)];
+
+		// Validate participants
+		for (let participant of allParticipants) {
+			const user = await User.findById(participant);
+			if (!user) {
+				return res.status(404).json({
+					message: `Participant with ID ${participant} not found.`,
+					status: "fail",
+				});
+			}
+		}
+
+		// Generate room ID
 		const room_id = isGroup
 			? `group-${Date.now()}`
 			: allParticipants.sort().join("-");
 
-		// Create a new room document
+		// Create and save room
 		const room = new Room({
 			room_id,
-			participants: allParticipants, // Include creator and any other participants
+			participants: allParticipants,
 			isGroup,
-			owner: creator_id, // Set the creator as the room owner
+			owner: creator_id,
 		});
 
-		// Save the room
 		await room.save();
+
+		// Populate participants for response
+		const populatedRoom = await Room.findById(room._id).populate(
+			"participants",
+			"name avatar"
+		);
 
 		res.status(201).json({
 			message: "Room created successfully.",
 			status: "success",
-			data: room,
+			data: populatedRoom,
 		});
 	} catch (error) {
 		console.error("Error in createRoom:", error.message);

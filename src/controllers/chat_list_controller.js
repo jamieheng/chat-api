@@ -11,26 +11,18 @@ const addChatToList = async (req, res) => {
 			name,
 			last_message,
 			last_message_timestamp,
+			room_id,
 			receiver_id,
+			isGroup = false,
 		} = req.body;
 
 		// Check if the required fields are present
-		if (!user_id || !name || !last_message || !receiver_id) {
+		if (!user_id || !name || !last_message || !receiver_id || !room_id) {
 			return res.status(400).json({
 				message: "Missing required fields.",
 				status: "fail",
 			});
 		}
-
-		// 1. Create a new room for the chat
-		const newRoom = new Room({
-			room_id: `${user_id}_${receiver_id}`,
-			participants: [user_id, receiver_id],
-			owner: user_id,
-		});
-
-		// Save the room to the database
-		const room = await newRoom.save();
 
 		// 2. Create a new chat list entry for both users and associate them with the room
 		const chatListEntryUser1 = new ChatList({
@@ -40,7 +32,8 @@ const addChatToList = async (req, res) => {
 			last_message,
 			last_message_timestamp,
 			receiver_id,
-			room_id: room._id,
+			room_id,
+			isGroup,
 		});
 
 		const chatListEntryUser2 = new ChatList({
@@ -50,7 +43,8 @@ const addChatToList = async (req, res) => {
 			last_message,
 			last_message_timestamp,
 			receiver_id: user_id,
-			room_id: room._id,
+			room_id,
+			isGroup,
 		});
 
 		// Save the chat list entries for both users
@@ -59,9 +53,9 @@ const addChatToList = async (req, res) => {
 
 		// 3. Return success response
 		res.status(201).json({
-			message: "Chat list entry and room added successfully!",
+			message: "Chat list entry added successfully!",
 			status: "success",
-			data: { chatListEntryUser1, chatListEntryUser2, room },
+			data: { chatListEntryUser1, chatListEntryUser2 },
 		});
 	} catch (error) {
 		console.error("Error in addChatToList:", error.message);
@@ -73,11 +67,12 @@ const addChatToList = async (req, res) => {
 	}
 };
 
-// Fetch chat list for a user (including last message and timestamp)
+// Get chat list by user ID
 const getChatList = async (req, res) => {
 	try {
 		const { user_id } = req.query;
 
+		// Check if the user_id is provided
 		if (!user_id) {
 			return res.status(400).json({
 				message: "User ID is required.",
@@ -85,47 +80,29 @@ const getChatList = async (req, res) => {
 			});
 		}
 
-		// Get all rooms the user is part of
-		const rooms = await Room.find({ participants: user_id });
+		// Find all chat entries for the user, both individual and group chats
+		const chatList = await ChatList.find({
+			$or: [{ user_id: user_id }],
+		})
+			.populate("room_id", "name") // Populate room details if needed
+			.sort({ last_message_timestamp: -1 }); // Optional: Sort by last message timestamp
 
-		if (!rooms.length) {
+		// If no chat list entries found
+		if (chatList.length === 0) {
 			return res.status(404).json({
-				message: "No chats found.",
+				message: "No chat entries found for the user.",
 				status: "fail",
 			});
 		}
 
-		// Populate the chat list with the last message for each room
-		const chatList = [];
-		for (let room of rooms) {
-			const lastMessage = await Message.findOne({ roomId: room._id }).sort({
-				timestamp: -1,
-			});
-			const otherParticipant = room.participants.find(
-				(participant) => participant !== user_id
-			);
-
-			const chat = {
-				user_id: otherParticipant,
-				profile_picture: `/uploads/${otherParticipant}.jpg`,
-				name: otherParticipant,
-				last_message: lastMessage ? lastMessage.content : "No messages yet",
-				last_message_timestamp: lastMessage
-					? lastMessage.timestamp
-					: new Date(),
-				participants: room.participants,
-			};
-
-			chatList.push(chat);
-		}
-
+		// Return the chat list entries
 		res.status(200).json({
 			message: "Chat list retrieved successfully.",
 			status: "success",
 			data: chatList,
 		});
 	} catch (error) {
-		console.error("Error in getChatList:", error.message);
+		console.error("Error in getChatListByUserId:", error.message);
 		res.status(500).json({
 			message: "Server error.",
 			status: "error",
@@ -136,5 +113,5 @@ const getChatList = async (req, res) => {
 
 module.exports = {
 	addChatToList,
-	getChatList,
+	getChatList, // Export the new function
 };

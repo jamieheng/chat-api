@@ -88,54 +88,6 @@ io.on("connection", (socket) => {
 		}
 	});
 
-	// Listen for a "sendMessage" event from the client
-	// socket.on("sendMessage", async (data) => {
-	//   try {
-	//     const { room_id, sender_id, receiver_id, content, media } = data;
-
-	//     // Validate the incoming data
-	//     if (!room_id || !sender_id || !receiver_id || (!content && !media)) {
-	//       console.error("sendMessage: Missing required fields", data);
-	//       socket.emit("error", { message: "Missing required fields." });
-	//       return;
-	//     }
-
-	//     // Check if the room exists using the room_id
-	//     const room = await Room.findOne({ room_id });
-	//     if (!room) {
-	//       console.error("sendMessage: Room not found", room_id);
-	//       socket.emit("error", { message: "Room not found." });
-	//       return;
-	//     }
-
-	//     // Create and save the message
-	//     const message = new Message({
-	//       roomId: room_id,
-	//       sender_id,
-	//       receiver_id, // Ensure receiver_id is saved
-	//       content,
-	//       media,
-	//     });
-
-	//     const savedMessage = await message.save();
-
-	//     // Emit the message to all clients in the room
-	//     io.to(room_id).emit("receiveMessage", savedMessage);
-	//     console.log("sendMessage: Message saved and emitted", savedMessage);
-	//   } catch (error) {
-	//     console.error("sendMessage: Error saving message", error.message);
-	//     socket.emit("error", { message: "Failed to send message." });
-	//   }
-	// });
-
-	// socket.on("sendMessage", async (data) => {
-	//   const { room_id, sender_id, content } = data;
-
-	//   // Broadcast message to all users in the room
-	//   io.to(room_id).emit("receiveMessage", { sender_id, content });
-	//   console.log(`Message sent to room ${room_id}: ${content}`);
-	// });
-
 	socket.on("sendMessage", async (data) => {
 		try {
 			const { room_id, sender_id, receiver_id, content, media } = data;
